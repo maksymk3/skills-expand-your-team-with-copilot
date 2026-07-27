@@ -14,6 +14,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const categoryFilters = document.querySelectorAll(".category-filter");
   const dayFilters = document.querySelectorAll(".day-filter");
   const timeFilters = document.querySelectorAll(".time-filter");
+  const difficultyFilters = document.querySelectorAll(".difficulty-filter");
+
+  // Theme toggle elements
+  const themeToggleButton = document.getElementById("theme-toggle-button");
+  const themeIcon = document.getElementById("theme-icon");
 
   // Authentication elements
   const loginButton = document.getElementById("login-button");
@@ -40,6 +45,14 @@ document.addEventListener("DOMContentLoaded", () => {
   let searchQuery = "";
   let currentDay = "";
   let currentTimeRange = "";
+  let currentDifficulty = "none";
+
+  // Difficulty levels with corresponding colors
+  const difficultyLevels = {
+    Beginner: { color: "#e8f5e9", textColor: "#2e7d32" },
+    Intermediate: { color: "#fff3e0", textColor: "#e65100" },
+    Advanced: { color: "#ffebee", textColor: "#c62828" },
+  };
 
   // Authentication state
   let currentUser = null;
@@ -63,6 +76,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const activeTimeFilter = document.querySelector(".time-filter.active");
     if (activeTimeFilter) {
       currentTimeRange = activeTimeFilter.dataset.time;
+    }
+
+    // Initialize difficulty filter
+    const activeDifficultyFilter = document.querySelector(
+      ".difficulty-filter.active"
+    );
+    if (activeDifficultyFilter) {
+      currentDifficulty = activeDifficultyFilter.dataset.difficulty;
     }
   }
 
@@ -89,6 +110,22 @@ document.addEventListener("DOMContentLoaded", () => {
     // Update active class
     timeFilters.forEach((btn) => {
       if (btn.dataset.time === timeRange) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+
+    fetchActivities();
+  }
+
+  // Function to set difficulty filter
+  function setDifficultyFilter(difficulty) {
+    currentDifficulty = difficulty;
+
+    // Update active class
+    difficultyFilters.forEach((btn) => {
+      if (btn.dataset.difficulty === difficulty) {
         btn.classList.add("active");
       } else {
         btn.classList.remove("active");
@@ -392,6 +429,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
 
+      // Handle difficulty filter
+      if (currentDifficulty) {
+        queryParams.push(`difficulty=${encodeURIComponent(currentDifficulty)}`);
+      }
+
       const queryString =
         queryParams.length > 0 ? `?${queryParams.join("&")}` : "";
       const response = await fetch(`/activities${queryString}`);
@@ -506,6 +548,18 @@ document.addEventListener("DOMContentLoaded", () => {
       </span>
     `;
 
+    // Create difficulty tag (only shown when a difficulty level is specified)
+    const difficultyInfo = details.difficulty
+      ? difficultyLevels[details.difficulty]
+      : null;
+    const difficultyTagHtml = difficultyInfo
+      ? `
+      <span class="difficulty-tag" style="background-color: ${difficultyInfo.color}; color: ${difficultyInfo.textColor}">
+        ${details.difficulty}
+      </span>
+    `
+      : "";
+
     // Create capacity indicator
     const capacityIndicator = `
       <div class="capacity-container ${capacityStatusClass}">
@@ -523,6 +577,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ${tagHtml}
       <h4>${name}</h4>
       <p>${details.description}</p>
+      ${difficultyTagHtml}
       <p class="tooltip">
         <strong>Schedule:</strong> ${formattedSchedule}
         <span class="tooltip-text">Regular meetings at this time throughout the semester</span>
@@ -637,6 +692,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Update current time filter and fetch activities
       currentTimeRange = button.dataset.time;
+      fetchActivities();
+    });
+  });
+
+  // Add event listeners for difficulty filter buttons
+  difficultyFilters.forEach((button) => {
+    button.addEventListener("click", () => {
+      // Update active class
+      difficultyFilters.forEach((btn) => btn.classList.remove("active"));
+      button.classList.add("active");
+
+      // Update current difficulty filter and fetch activities
+      currentDifficulty = button.dataset.difficulty;
       fetchActivities();
     });
   });
@@ -859,10 +927,32 @@ document.addEventListener("DOMContentLoaded", () => {
   window.activityFilters = {
     setDayFilter,
     setTimeRangeFilter,
+    setDifficultyFilter,
   };
+
+  // Apply the saved theme preference (or default to light mode)
+  function initializeTheme() {
+    const savedTheme = localStorage.getItem("theme");
+    const isDark = savedTheme === "dark";
+    setDarkMode(isDark);
+  }
+
+  // Enable or disable dark mode and persist the preference
+  function setDarkMode(isDark) {
+    document.body.classList.toggle("dark-mode", isDark);
+    themeIcon.textContent = isDark ? "\u2600\ufe0f" : "\ud83c\udf19";
+    localStorage.setItem("theme", isDark ? "dark" : "light");
+  }
+
+  // Toggle dark mode when the theme button is clicked
+  themeToggleButton.addEventListener("click", () => {
+    const isDark = !document.body.classList.contains("dark-mode");
+    setDarkMode(isDark);
+  });
 
   // Initialize app
   checkAuthentication();
   initializeFilters();
+  initializeTheme();
   fetchActivities();
 });
